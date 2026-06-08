@@ -286,7 +286,7 @@ DEX-Router-Solana-V1/
 
 ### Program ID
 
-- **Mainnet**: `6m2CDdhRgxpH4WjvdzxAYbGxwdGUz5MziiL5jek2kBma`
+- **Mainnet**: `earnLLspPkK9ku4sWbu3EhdQQxorKKzJKj9AKuncy5f`
 - **Testnet**: Configure based on deployment environment
 
 ## 🧪 Testing

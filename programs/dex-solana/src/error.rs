@@ -247,4 +247,10 @@ pub enum ErrorCode {
 
     #[msg("System program is none")]
     SystemProgramIsNone,
+
+    #[msg("Swap dex is not enabled")]
+    SwapNotSupported,
+
+    #[msg("Profit guard: signer has no profit after fees")]
+    ProfitGuardNoProfit,
 }

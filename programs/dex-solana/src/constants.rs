@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 #[constant]
 pub const SEED_SA: &[u8] = b"okx_sa";
 pub const SEED_TEMP_WSOL: &[u8] = b"temp_wsol";
-pub const BUMP_SA: u8 = 251;
+pub const BUMP_SA: u8 = 253;
 
 pub const COMMISSION_RATE_LIMIT: u16 = 1_000; // 10%
 pub const COMMISSION_DENOMINATOR: u64 = 10_000;
@@ -113,7 +113,7 @@ pub mod authority_pda {
 #[cfg(not(feature = "staging"))]
 pub mod authority_pda {
     use anchor_lang::declare_id;
-    declare_id!("HV1KXxWFaSeriyFvXyx48FqG9BoFbfinB8njCJonqP7K");
+    declare_id!("HQCyhCr3aGwocWVHAa8KyHLiQyDL5d5DpCPNHER2brka");
 }
 
 #[cfg(feature = "staging")]
@@ -137,7 +137,7 @@ pub mod wsol_sa {
 #[cfg(not(feature = "staging"))]
 pub mod wsol_sa {
     use anchor_lang::declare_id;
-    declare_id!("2rikd7tzPbmowhUJzPNVtX7fuUGcnBa8jqJnx6HbtHeE");
+    declare_id!("3fs1J9p9xT4iPkvyuj7WywXKRiSAQ3B41Q5kTvrJ6Hn3");
 }
 
 #[cfg(feature = "staging")]
@@ -175,6 +175,11 @@ pub mod token_2022_program {
 pub mod wsol_program {
     use anchor_lang::declare_id;
     declare_id!("So11111111111111111111111111111111111111112");
+}
+
+pub mod usdc_mint {
+    use anchor_lang::declare_id;
+    declare_id!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 }
 
 //system program address, backend uses this address to represent native sol

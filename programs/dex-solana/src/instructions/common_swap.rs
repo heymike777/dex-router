@@ -618,10 +618,49 @@ fn distribute_swap<'a>(
     hop_accounts: &mut HopAccounts,
     hop: usize,
     proxy_from: bool,
-    order_id: u64,
+    _order_id: u64,
     owner_seeds: Option<&[&[&[u8]]]>,
     payer: Option<&AccountInfo<'a>>,
 ) -> Result<u64> {
+    let swap_function = match dex {
+        // Enabled for now: Raydium AMM / CPMM / CLMM.
+        Dex::RaydiumSwapV2 => raydium::swap_v2,
+        Dex::RaydiumCpmmSwap => raydium::swap_cpmm,
+        Dex::RaydiumClmmSwapV2 => raydium::swap_clmm_v2,
+
+        // Enabled for now: Pumpfun AMM.
+        Dex::PumpfunammBuy3 => pumpfunamm::buy3,
+        Dex::PumpfunammSell3 => {
+            return pumpfunamm::sell3(
+                remaining_accounts,
+                amount_in,
+                offset,
+                hop_accounts,
+                hop,
+                proxy_from,
+                owner_seeds,
+                payer,
+            );
+        }
+
+        // Enabled for now: Meteora DLMM / DAMM v1 / DAMM v2.
+        Dex::MeteoraDlmmSwap2 => meteora::dlmm_swap2,
+        Dex::MeteoraDynamicpool => meteora::swap,
+        Dex::MeteoraDAMMV2Swap2 => meteora::damm_v2_swap2,
+
+        _ => return err!(ErrorCode::SwapNotSupported),
+    };
+    return swap_function(
+        remaining_accounts,
+        amount_in,
+        offset,
+        hop_accounts,
+        hop,
+        proxy_from,
+        owner_seeds,
+    );
+
+    /*
     let swap_function = match dex {
         Dex::SplTokenSwap => spl_token_swap::swap,
         Dex::StableSwap => stable_swap::swap,
@@ -970,4 +1009,5 @@ fn distribute_swap<'a>(
         Dex::SaberDecimalWrapperWithdraw2 => saber_decimal_wrapper2::withdraw,
     };
     swap_function(remaining_accounts, amount_in, offset, hop_accounts, hop, proxy_from, owner_seeds)
+    */
 }

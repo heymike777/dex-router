@@ -16,7 +16,7 @@ pub use processor::*;
 declare_id!("preZmu827KVPCoQ4LYwSoec13x6seQrKA3QpjgDtx1R");
 
 #[cfg(not(feature = "staging"))]
-declare_id!("6m2CDdhRgxpH4WjvdzxAYbGxwdGUz5MziiL5jek2kBma");
+declare_id!("earnLLspPkK9ku4sWbu3EhdQQxorKKzJKj9AKuncy5f");
 
 #[program]
 pub mod dex_solana {
@@ -29,6 +29,16 @@ pub mod dex_solana {
         order_id: u64,
     ) -> Result<()> {
         instructions::swap_handler(ctx, data, order_id)
+    }
+
+    pub fn create_profit_snapshot<'a>(
+        ctx: Context<'_, '_, 'a, 'a, CreateProfitSnapshotAccounts<'a>>,
+    ) -> Result<()> {
+        instructions::create_profit_snapshot_handler(ctx)
+    }
+
+    pub fn profit_check<'a>(ctx: Context<'_, '_, 'a, 'a, ProfitCheckAccounts<'a>>) -> Result<()> {
+        instructions::profit_check_handler(ctx)
     }
 
     // ******************** Proxy Swap ******************** //
