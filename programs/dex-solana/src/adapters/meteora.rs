@@ -840,7 +840,7 @@ pub fn dlmm_swap<'a>(
 
     let mut accounts = Vec::with_capacity(18);
     accounts.push(AccountMeta::new(swap_accounts.lb_pair.key(), false));
-    accounts.push(AccountMeta::new_readonly(swap_accounts.bin_array_bitmap_extension.key(), false));
+    accounts.push(AccountMeta::new(swap_accounts.bin_array_bitmap_extension.key(), false));
     accounts.push(AccountMeta::new(swap_accounts.reserve_x.key(), false));
     accounts.push(AccountMeta::new(swap_accounts.reserve_y.key(), false));
     accounts.push(AccountMeta::new(swap_source_token, false));
@@ -948,7 +948,7 @@ pub fn dlmm_swap2<'a>(
 
     let mut accounts = Vec::with_capacity(19);
     accounts.push(AccountMeta::new(swap_accounts.lb_pair.key(), false));
-    accounts.push(AccountMeta::new_readonly(swap_accounts.bin_array_bitmap_extension.key(), false));
+    accounts.push(AccountMeta::new(swap_accounts.bin_array_bitmap_extension.key(), false));
     accounts.push(AccountMeta::new(swap_accounts.reserve_x.key(), false));
     accounts.push(AccountMeta::new(swap_accounts.reserve_y.key(), false));
     accounts.push(AccountMeta::new(swap_source_token, false));
