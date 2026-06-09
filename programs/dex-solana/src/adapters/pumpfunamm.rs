@@ -11,6 +11,10 @@ use anchor_lang::solana_program::instruction::Instruction;
 use anchor_spl::token_interface::TokenAccount;
 use arrayref::array_ref;
 const ARGS_LEN: usize = 24;
+fn default_coin_creator_vault_authority() -> Pubkey {
+    Pubkey::find_program_address(&[b"creator_vault", Pubkey::default().as_ref()], &pumpfunamm_program::id()).0
+}
+
 pub struct PumpfunammSellAccounts3<'info> {
     pub dex_program_id: &'info AccountInfo<'info>,
     pub swap_authority_pubkey: &'info AccountInfo<'info>,
@@ -34,6 +38,9 @@ pub struct PumpfunammSellAccounts3<'info> {
     pub coin_creator_vault_authority: &'info AccountInfo<'info>,
     pub fee_config: &'info AccountInfo<'info>,
     pub fee_program: &'info AccountInfo<'info>,
+    pub pool_v2: Option<&'info AccountInfo<'info>>,
+    pub buyback_fee_recipient: &'info AccountInfo<'info>,
+    pub buyback_fee_recipient_token_account: &'info AccountInfo<'info>,
 }
 const SELL_ACCOUNTS_LEN3: usize = 21;
 
@@ -63,6 +70,21 @@ impl<'info> PumpfunammSellAccounts3<'info> {
             fee_program,
         ]: &[AccountInfo<'info>; SELL_ACCOUNTS_LEN3] =
             array_ref![accounts, offset, SELL_ACCOUNTS_LEN3];
+        let has_pool_v2 = coin_creator_vault_authority.key() != default_coin_creator_vault_authority();
+        let extra_offset = offset + SELL_ACCOUNTS_LEN3;
+        require!(
+            accounts.len() >= extra_offset + if has_pool_v2 { 3 } else { 2 },
+            ErrorCode::InvalidAccountsLength
+        );
+        let (pool_v2, buyback_fee_recipient, buyback_fee_recipient_token_account) = if has_pool_v2 {
+            (
+                Some(&accounts[extra_offset]),
+                &accounts[extra_offset + 1],
+                &accounts[extra_offset + 2],
+            )
+        } else {
+            (None, &accounts[extra_offset], &accounts[extra_offset + 1])
+        };
 
         Ok(Self {
             dex_program_id,
@@ -86,7 +108,14 @@ impl<'info> PumpfunammSellAccounts3<'info> {
             coin_creator_vault_authority,
             fee_config,
             fee_program,
+            pool_v2,
+            buyback_fee_recipient,
+            buyback_fee_recipient_token_account,
         })
+    }
+
+    fn accounts_len(&self) -> usize {
+        SELL_ACCOUNTS_LEN3 + if self.pool_v2.is_some() { 3 } else { 2 }
     }
 }
 pub struct PumpfunammSellProcessor;
@@ -149,12 +178,17 @@ pub fn sell3<'a>(
 ) -> Result<u64> {
     msg!("Dex::Pumpfunamm amount_in: {}, offset: {}", amount_in, offset);
     require!(
-        remaining_accounts.len() >= *offset + SELL_ACCOUNTS_LEN3,
+        remaining_accounts.len() >= *offset + SELL_ACCOUNTS_LEN3 + 2,
         ErrorCode::InvalidAccountsLength
     );
 
     let mut swap_accounts: PumpfunammSellAccounts3<'_> =
         PumpfunammSellAccounts3::parse_accounts(remaining_accounts, *offset)?;
+    let accounts_len = swap_accounts.accounts_len();
+    require!(
+        remaining_accounts.len() >= *offset + accounts_len,
+        ErrorCode::InvalidAccountsLength
+    );
     if swap_accounts.dex_program_id.key != &pumpfunamm_program::id() {
         return Err(ErrorCode::InvalidProgramId.into());
     }
@@ -202,31 +236,42 @@ pub fn sell3<'a>(
         .push(AccountMeta::new_readonly(swap_accounts.coin_creator_vault_authority.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_config.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_program.key(), false));
+    if let Some(pool_v2) = swap_accounts.pool_v2 {
+        accounts.push(AccountMeta::new_readonly(pool_v2.key(), false));
+    }
+    accounts.push(AccountMeta::new_readonly(swap_accounts.buyback_fee_recipient.key(), false));
+    accounts.push(AccountMeta::new(swap_accounts.buyback_fee_recipient_token_account.key(), false));
 
-    let account_infos = [
+    let mut account_infos = Vec::with_capacity(accounts_len + 1);
+    account_infos.push(
         swap_accounts.pool.to_account_info(),
-        swap_accounts.swap_authority_pubkey.to_account_info(),
-        swap_accounts.global_config.to_account_info(),
-        swap_accounts.base_mint.to_account_info(),
-        swap_accounts.quote_mint.to_account_info(),
-        swap_accounts.swap_source_token.to_account_info(),
-        swap_accounts.swap_destination_token.to_account_info(),
-        swap_accounts.pool_base_token_account.to_account_info(),
-        swap_accounts.pool_quote_token_account.to_account_info(),
-        swap_accounts.protocol_fee_recipient.to_account_info(),
-        swap_accounts.protocol_fee_recipient_token_account.to_account_info(),
-        swap_accounts.base_token_program.to_account_info(),
-        swap_accounts.quote_token_program.to_account_info(),
-        swap_accounts.system_program.to_account_info(),
-        swap_accounts.associated_token_program.to_account_info(),
-        swap_accounts.event_authority.to_account_info(),
-        swap_accounts.dex_program_id.to_account_info(),
-        swap_accounts.coin_creator_vault_ata.to_account_info(),
-        swap_accounts.coin_creator_vault_authority.to_account_info(),
-        swap_accounts.fee_config.to_account_info(),
-        swap_accounts.fee_program.to_account_info(),
-        payer.unwrap().to_account_info(),
-    ];
+    );
+    account_infos.push(swap_accounts.swap_authority_pubkey.to_account_info());
+    account_infos.push(swap_accounts.global_config.to_account_info());
+    account_infos.push(swap_accounts.base_mint.to_account_info());
+    account_infos.push(swap_accounts.quote_mint.to_account_info());
+    account_infos.push(swap_accounts.swap_source_token.to_account_info());
+    account_infos.push(swap_accounts.swap_destination_token.to_account_info());
+    account_infos.push(swap_accounts.pool_base_token_account.to_account_info());
+    account_infos.push(swap_accounts.pool_quote_token_account.to_account_info());
+    account_infos.push(swap_accounts.protocol_fee_recipient.to_account_info());
+    account_infos.push(swap_accounts.protocol_fee_recipient_token_account.to_account_info());
+    account_infos.push(swap_accounts.base_token_program.to_account_info());
+    account_infos.push(swap_accounts.quote_token_program.to_account_info());
+    account_infos.push(swap_accounts.system_program.to_account_info());
+    account_infos.push(swap_accounts.associated_token_program.to_account_info());
+    account_infos.push(swap_accounts.event_authority.to_account_info());
+    account_infos.push(swap_accounts.dex_program_id.to_account_info());
+    account_infos.push(swap_accounts.coin_creator_vault_ata.to_account_info());
+    account_infos.push(swap_accounts.coin_creator_vault_authority.to_account_info());
+    account_infos.push(swap_accounts.fee_config.to_account_info());
+    account_infos.push(swap_accounts.fee_program.to_account_info());
+    if let Some(pool_v2) = swap_accounts.pool_v2 {
+        account_infos.push(pool_v2.to_account_info());
+    }
+    account_infos.push(swap_accounts.buyback_fee_recipient.to_account_info());
+    account_infos.push(swap_accounts.buyback_fee_recipient_token_account.to_account_info());
+    account_infos.push(payer.unwrap().to_account_info());
 
     let instruction =
         Instruction { program_id: swap_accounts.dex_program_id.key(), accounts, data };
@@ -242,7 +287,7 @@ pub fn sell3<'a>(
         instruction,
         hop,
         offset,
-        SELL_ACCOUNTS_LEN3,
+        accounts_len,
         proxy_swap,
         owner_seeds,
     )?;
@@ -274,6 +319,9 @@ pub struct PumpfunammBuyAccounts3<'info> {
     pub user_volume_accumulator: &'info AccountInfo<'info>,
     pub fee_config: &'info AccountInfo<'info>,
     pub fee_program: &'info AccountInfo<'info>,
+    pub pool_v2: Option<&'info AccountInfo<'info>>,
+    pub buyback_fee_recipient: &'info AccountInfo<'info>,
+    pub buyback_fee_recipient_token_account: &'info AccountInfo<'info>,
 }
 const BUY_ACCOUNTS_LEN3: usize = 23;
 
@@ -305,6 +353,21 @@ impl<'info> PumpfunammBuyAccounts3<'info> {
             fee_program,
         ]: &[AccountInfo<'info>; BUY_ACCOUNTS_LEN3] =
             array_ref![accounts, offset, BUY_ACCOUNTS_LEN3];
+        let has_pool_v2 = coin_creator_vault_authority.key() != default_coin_creator_vault_authority();
+        let extra_offset = offset + BUY_ACCOUNTS_LEN3;
+        require!(
+            accounts.len() >= extra_offset + if has_pool_v2 { 3 } else { 2 },
+            ErrorCode::InvalidAccountsLength
+        );
+        let (pool_v2, buyback_fee_recipient, buyback_fee_recipient_token_account) = if has_pool_v2 {
+            (
+                Some(&accounts[extra_offset]),
+                &accounts[extra_offset + 1],
+                &accounts[extra_offset + 2],
+            )
+        } else {
+            (None, &accounts[extra_offset], &accounts[extra_offset + 1])
+        };
 
         Ok(Self {
             dex_program_id,
@@ -330,7 +393,14 @@ impl<'info> PumpfunammBuyAccounts3<'info> {
             user_volume_accumulator,
             fee_config,
             fee_program,
+            pool_v2,
+            buyback_fee_recipient,
+            buyback_fee_recipient_token_account,
         })
+    }
+
+    fn accounts_len(&self) -> usize {
+        BUY_ACCOUNTS_LEN3 + if self.pool_v2.is_some() { 3 } else { 2 }
     }
 }
 pub struct PumpfunammBuyProcessor;
@@ -347,11 +417,16 @@ pub fn buy3<'a>(
 ) -> Result<u64> {
     msg!("Dex::Pumpfunamm amount_in: {}, offset: {}", amount_in, offset);
     require!(
-        remaining_accounts.len() >= *offset + BUY_ACCOUNTS_LEN3,
+        remaining_accounts.len() >= *offset + BUY_ACCOUNTS_LEN3 + 2,
         ErrorCode::InvalidAccountsLength
     );
 
     let mut swap_accounts = PumpfunammBuyAccounts3::parse_accounts(remaining_accounts, *offset)?;
+    let accounts_len = swap_accounts.accounts_len();
+    require!(
+        remaining_accounts.len() >= *offset + accounts_len,
+        ErrorCode::InvalidAccountsLength
+    );
     if swap_accounts.dex_program_id.key != &pumpfunamm_program::id() {
         return Err(ErrorCode::InvalidProgramId.into());
     }
@@ -417,8 +492,13 @@ pub fn buy3<'a>(
     accounts.push(AccountMeta::new(swap_accounts.user_volume_accumulator.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_config.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_program.key(), false));
+    if let Some(pool_v2) = swap_accounts.pool_v2 {
+        accounts.push(AccountMeta::new_readonly(pool_v2.key(), false));
+    }
+    accounts.push(AccountMeta::new_readonly(swap_accounts.buyback_fee_recipient.key(), false));
+    accounts.push(AccountMeta::new(swap_accounts.buyback_fee_recipient_token_account.key(), false));
 
-    let mut account_infos = arrayvec::ArrayVec::<_, { BUY_ACCOUNTS_LEN3 }>::new();
+    let mut account_infos = Vec::with_capacity(accounts_len);
     account_infos.push(swap_accounts.pool.to_account_info());
     account_infos.push(swap_accounts.swap_authority_pubkey.to_account_info());
     account_infos.push(swap_accounts.global_config.to_account_info());
@@ -442,6 +522,11 @@ pub fn buy3<'a>(
     account_infos.push(swap_accounts.user_volume_accumulator.to_account_info());
     account_infos.push(swap_accounts.fee_config.to_account_info());
     account_infos.push(swap_accounts.fee_program.to_account_info());
+    if let Some(pool_v2) = swap_accounts.pool_v2 {
+        account_infos.push(pool_v2.to_account_info());
+    }
+    account_infos.push(swap_accounts.buyback_fee_recipient.to_account_info());
+    account_infos.push(swap_accounts.buyback_fee_recipient_token_account.to_account_info());
 
     let instruction =
         Instruction { program_id: swap_accounts.dex_program_id.key(), accounts, data };
@@ -457,7 +542,7 @@ pub fn buy3<'a>(
         instruction,
         hop,
         offset,
-        BUY_ACCOUNTS_LEN3,
+        accounts_len,
         proxy_swap,
         owner_seeds,
     )?;
