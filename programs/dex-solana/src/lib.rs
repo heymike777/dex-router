@@ -16,7 +16,7 @@ pub use processor::*;
 declare_id!("preZmu827KVPCoQ4LYwSoec13x6seQrKA3QpjgDtx1R");
 
 #[cfg(not(feature = "staging"))]
-declare_id!("earnLLspPkK9ku4sWbu3EhdQQxorKKzJKj9AKuncy5f");
+declare_id!("89P1rihVbww57idhSLHUhxXNkhzYcSghYrbjRoUuivPo");
 
 #[program]
 pub mod dex_solana {
