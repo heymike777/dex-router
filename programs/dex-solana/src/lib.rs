@@ -33,8 +33,9 @@ pub mod dex_solana {
 
     pub fn create_profit_snapshot<'a>(
         ctx: Context<'_, '_, 'a, 'a, CreateProfitSnapshotAccounts<'a>>,
+        transaction_fee_lamports: u64,
     ) -> Result<()> {
-        instructions::create_profit_snapshot_handler(ctx)
+        instructions::create_profit_snapshot_handler(ctx, transaction_fee_lamports)
     }
 
     pub fn profit_check<'a>(ctx: Context<'_, '_, 'a, 'a, ProfitCheckAccounts<'a>>) -> Result<()> {

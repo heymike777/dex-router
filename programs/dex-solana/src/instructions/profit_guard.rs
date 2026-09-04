@@ -7,8 +7,7 @@ pub const SOL_PRICE_USDC: u64 = 65;
 pub const USDC_DECIMALS_MULTIPLIER: u64 = 1_000_000;
 pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
 
-// Covers transaction fees charged before the first instruction can snapshot.
-// Jito/Helius tips are normal transfer instructions and are captured directly.
+// Minimum portfolio increase after transaction fees and Jito/Helius tips.
 pub const REQUIRED_PROFIT_USDC_MICRO: u64 = 10_000;
 
 #[account]
@@ -66,17 +65,36 @@ pub struct ProfitCheckAccounts<'info> {
 
 pub fn create_profit_snapshot_handler<'a>(
     ctx: Context<'_, '_, 'a, 'a, CreateProfitSnapshotAccounts<'a>>,
+    transaction_fee_lamports: u64,
 ) -> Result<()> {
+    // Solana deducts the transaction fee before executing the first instruction.
+    // init_if_needed also funds this PDA before the handler on its first successful use.
+    let is_new_snapshot = ctx.accounts.profit_snapshot.owner == Pubkey::default();
+    let snapshot_rent_lamports = if is_new_snapshot {
+        ctx.accounts.profit_snapshot.to_account_info().lamports()
+    } else {
+        0
+    };
+    let pre_transaction_sol_lamports = ctx
+        .accounts
+        .signer
+        .lamports()
+        .checked_add(transaction_fee_lamports)
+        .and_then(|value| value.checked_add(snapshot_rent_lamports))
+        .ok_or(ErrorCode::CalculationError)?;
+
     let snapshot = &mut ctx.accounts.profit_snapshot;
     snapshot.owner = ctx.accounts.signer.key();
-    snapshot.sol_lamports = ctx.accounts.signer.lamports();
+    snapshot.sol_lamports = pre_transaction_sol_lamports;
     snapshot.usdc_amount = ctx.accounts.usdc_token_account.amount;
 
     msg!(
-        "ProfitGuard snapshot owner={} sol_lamports={} usdc_amount={}",
+        "ProfitGuard snapshot owner={} sol_lamports={} usdc_amount={} transaction_fee_lamports={} snapshot_rent_lamports={}",
         snapshot.owner,
         snapshot.sol_lamports,
-        snapshot.usdc_amount
+        snapshot.usdc_amount,
+        transaction_fee_lamports,
+        snapshot_rent_lamports
     );
 
     Ok(())
