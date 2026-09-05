@@ -8,11 +8,15 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::Instruction;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::TokenAccount;
 use arrayref::array_ref;
-const ARGS_LEN: usize = 24;
+const ARGS_LEN: usize = 25;
 fn default_coin_creator_vault_authority() -> Pubkey {
     Pubkey::find_program_address(&[b"creator_vault", Pubkey::default().as_ref()], &pumpfunamm_program::id()).0
+}
+fn user_volume_accumulator(user: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"user_volume_accumulator", user.as_ref()], &pumpfunamm_program::id()).0
 }
 
 pub struct PumpfunammSellAccounts3<'info> {
@@ -38,6 +42,8 @@ pub struct PumpfunammSellAccounts3<'info> {
     pub coin_creator_vault_authority: &'info AccountInfo<'info>,
     pub fee_config: &'info AccountInfo<'info>,
     pub fee_program: &'info AccountInfo<'info>,
+    pub user_volume_accumulator_wsol_ata: Option<&'info AccountInfo<'info>>,
+    pub user_volume_accumulator: Option<&'info AccountInfo<'info>>,
     pub pool_v2: Option<&'info AccountInfo<'info>>,
     pub buyback_fee_recipient: &'info AccountInfo<'info>,
     pub buyback_fee_recipient_token_account: &'info AccountInfo<'info>,
@@ -70,8 +76,27 @@ impl<'info> PumpfunammSellAccounts3<'info> {
             fee_program,
         ]: &[AccountInfo<'info>; SELL_ACCOUNTS_LEN3] =
             array_ref![accounts, offset, SELL_ACCOUNTS_LEN3];
+        let mut extra_offset = offset + SELL_ACCOUNTS_LEN3;
+        let expected_user_volume_accumulator = user_volume_accumulator(swap_authority_pubkey.key);
+        let expected_user_volume_accumulator_wsol_ata = get_associated_token_address_with_program_id(
+            &expected_user_volume_accumulator,
+            quote_mint.key,
+            quote_token_program.key,
+        );
+        let has_cashback_accounts = accounts.get(extra_offset).map_or(false, |account| {
+            account.key() == expected_user_volume_accumulator_wsol_ata
+        }) && accounts.get(extra_offset + 1).map_or(false, |account| {
+            account.key() == expected_user_volume_accumulator
+        });
+        let (user_volume_accumulator_wsol_ata, user_volume_accumulator) =
+            if has_cashback_accounts {
+                let result = (Some(&accounts[extra_offset]), Some(&accounts[extra_offset + 1]));
+                extra_offset += 2;
+                result
+            } else {
+                (None, None)
+            };
         let has_pool_v2 = coin_creator_vault_authority.key() != default_coin_creator_vault_authority();
-        let extra_offset = offset + SELL_ACCOUNTS_LEN3;
         require!(
             accounts.len() >= extra_offset + if has_pool_v2 { 3 } else { 2 },
             ErrorCode::InvalidAccountsLength
@@ -108,6 +133,8 @@ impl<'info> PumpfunammSellAccounts3<'info> {
             coin_creator_vault_authority,
             fee_config,
             fee_program,
+            user_volume_accumulator_wsol_ata,
+            user_volume_accumulator,
             pool_v2,
             buyback_fee_recipient,
             buyback_fee_recipient_token_account,
@@ -115,7 +142,9 @@ impl<'info> PumpfunammSellAccounts3<'info> {
     }
 
     fn accounts_len(&self) -> usize {
-        SELL_ACCOUNTS_LEN3 + if self.pool_v2.is_some() { 3 } else { 2 }
+        SELL_ACCOUNTS_LEN3
+            + if self.user_volume_accumulator_wsol_ata.is_some() { 2 } else { 0 }
+            + if self.pool_v2.is_some() { 3 } else { 2 }
     }
 }
 pub struct PumpfunammSellProcessor;
@@ -236,6 +265,10 @@ pub fn sell3<'a>(
         .push(AccountMeta::new_readonly(swap_accounts.coin_creator_vault_authority.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_config.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_program.key(), false));
+    if let Some(user_volume_accumulator_wsol_ata) = swap_accounts.user_volume_accumulator_wsol_ata {
+        accounts.push(AccountMeta::new(user_volume_accumulator_wsol_ata.key(), false));
+        accounts.push(AccountMeta::new(swap_accounts.user_volume_accumulator.unwrap().key(), false));
+    }
     if let Some(pool_v2) = swap_accounts.pool_v2 {
         accounts.push(AccountMeta::new_readonly(pool_v2.key(), false));
     }
@@ -266,6 +299,10 @@ pub fn sell3<'a>(
     account_infos.push(swap_accounts.coin_creator_vault_authority.to_account_info());
     account_infos.push(swap_accounts.fee_config.to_account_info());
     account_infos.push(swap_accounts.fee_program.to_account_info());
+    if let Some(user_volume_accumulator_wsol_ata) = swap_accounts.user_volume_accumulator_wsol_ata {
+        account_infos.push(user_volume_accumulator_wsol_ata.to_account_info());
+        account_infos.push(swap_accounts.user_volume_accumulator.unwrap().to_account_info());
+    }
     if let Some(pool_v2) = swap_accounts.pool_v2 {
         account_infos.push(pool_v2.to_account_info());
     }
@@ -319,6 +356,7 @@ pub struct PumpfunammBuyAccounts3<'info> {
     pub user_volume_accumulator: &'info AccountInfo<'info>,
     pub fee_config: &'info AccountInfo<'info>,
     pub fee_program: &'info AccountInfo<'info>,
+    pub user_volume_accumulator_wsol_ata: Option<&'info AccountInfo<'info>>,
     pub pool_v2: Option<&'info AccountInfo<'info>>,
     pub buyback_fee_recipient: &'info AccountInfo<'info>,
     pub buyback_fee_recipient_token_account: &'info AccountInfo<'info>,
@@ -353,8 +391,23 @@ impl<'info> PumpfunammBuyAccounts3<'info> {
             fee_program,
         ]: &[AccountInfo<'info>; BUY_ACCOUNTS_LEN3] =
             array_ref![accounts, offset, BUY_ACCOUNTS_LEN3];
+        let mut extra_offset = offset + BUY_ACCOUNTS_LEN3;
+        let expected_user_volume_accumulator_wsol_ata = get_associated_token_address_with_program_id(
+            user_volume_accumulator.key,
+            quote_mint.key,
+            quote_token_program.key,
+        );
+        let user_volume_accumulator_wsol_ata =
+            if accounts.get(extra_offset).map_or(false, |account| {
+                account.key() == expected_user_volume_accumulator_wsol_ata
+            }) {
+                let result = Some(&accounts[extra_offset]);
+                extra_offset += 1;
+                result
+            } else {
+                None
+            };
         let has_pool_v2 = coin_creator_vault_authority.key() != default_coin_creator_vault_authority();
-        let extra_offset = offset + BUY_ACCOUNTS_LEN3;
         require!(
             accounts.len() >= extra_offset + if has_pool_v2 { 3 } else { 2 },
             ErrorCode::InvalidAccountsLength
@@ -393,6 +446,7 @@ impl<'info> PumpfunammBuyAccounts3<'info> {
             user_volume_accumulator,
             fee_config,
             fee_program,
+            user_volume_accumulator_wsol_ata,
             pool_v2,
             buyback_fee_recipient,
             buyback_fee_recipient_token_account,
@@ -400,7 +454,9 @@ impl<'info> PumpfunammBuyAccounts3<'info> {
     }
 
     fn accounts_len(&self) -> usize {
-        BUY_ACCOUNTS_LEN3 + if self.pool_v2.is_some() { 3 } else { 2 }
+        BUY_ACCOUNTS_LEN3
+            + if self.user_volume_accumulator_wsol_ata.is_some() { 1 } else { 0 }
+            + if self.pool_v2.is_some() { 3 } else { 2 }
     }
 }
 pub struct PumpfunammBuyProcessor;
@@ -447,6 +503,7 @@ pub fn buy3<'a>(
     data.extend_from_slice(BUY_EXACT_QUOTE_IN_SELECTOR);
     data.extend_from_slice(&amount_in.to_le_bytes()); // spendable_quote_in
     data.extend_from_slice(&1u64.to_le_bytes()); // min_base_amount_out
+    data.push(1); // track_volume
 
     let mut accounts = Vec::with_capacity(23);
     accounts.push(AccountMeta::new(swap_accounts.pool.key(), false));
@@ -492,6 +549,9 @@ pub fn buy3<'a>(
     accounts.push(AccountMeta::new(swap_accounts.user_volume_accumulator.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_config.key(), false));
     accounts.push(AccountMeta::new_readonly(swap_accounts.fee_program.key(), false));
+    if let Some(user_volume_accumulator_wsol_ata) = swap_accounts.user_volume_accumulator_wsol_ata {
+        accounts.push(AccountMeta::new(user_volume_accumulator_wsol_ata.key(), false));
+    }
     if let Some(pool_v2) = swap_accounts.pool_v2 {
         accounts.push(AccountMeta::new_readonly(pool_v2.key(), false));
     }
@@ -522,6 +582,9 @@ pub fn buy3<'a>(
     account_infos.push(swap_accounts.user_volume_accumulator.to_account_info());
     account_infos.push(swap_accounts.fee_config.to_account_info());
     account_infos.push(swap_accounts.fee_program.to_account_info());
+    if let Some(user_volume_accumulator_wsol_ata) = swap_accounts.user_volume_accumulator_wsol_ata {
+        account_infos.push(user_volume_accumulator_wsol_ata.to_account_info());
+    }
     if let Some(pool_v2) = swap_accounts.pool_v2 {
         account_infos.push(pool_v2.to_account_info());
     }
