@@ -22,6 +22,17 @@ declare_id!("89P1rihVbww57idhSLHUhxXNkhzYcSghYrbjRoUuivPo");
 pub mod dex_solana {
     use super::*;
 
+    pub fn prepare_arbitrage_output(ctx: Context<PrepareArbitrageOutput>) -> Result<()> {
+        instructions::prepare_arbitrage_output_handler(ctx)
+    }
+
+    pub fn arbitrage_compact<'a>(
+        ctx: Context<'_, '_, 'a, 'a, SwapAccounts<'a>>,
+        args: CompactArbitrageArgs,
+    ) -> Result<()> {
+        instructions::arbitrage_compact_handler(ctx, args)
+    }
+
     #[cfg_attr(feature = "log-metrics", dex_macros::log_metrics)]
     pub fn swap<'a>(
         ctx: Context<'_, '_, 'a, 'a, SwapAccounts<'a>>,
