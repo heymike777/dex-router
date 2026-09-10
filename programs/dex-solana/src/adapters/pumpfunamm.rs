@@ -12,8 +12,12 @@ use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::TokenAccount;
 use arrayref::array_ref;
 const ARGS_LEN: usize = 25;
-fn default_coin_creator_vault_authority() -> Pubkey {
-    Pubkey::find_program_address(&[b"creator_vault", Pubkey::default().as_ref()], &pumpfunamm_program::id()).0
+fn has_pool_v2(accounts: &[AccountInfo], offset: usize, base_mint: &Pubkey) -> bool {
+    // The selected fee tier may disable creator fees even for a nonzero creator.
+    // Identify the optional account by its PDA; the callee validates whether the
+    // current swap requires it. Never consume the next hop based on creator alone.
+    let expected = Pubkey::find_program_address(&[b"pool-v2", base_mint.as_ref()], &pumpfunamm_program::id()).0;
+    accounts.get(offset).map_or(false, |account| account.key() == expected)
 }
 fn user_volume_accumulator(user: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"user_volume_accumulator", user.as_ref()], &pumpfunamm_program::id()).0
@@ -96,7 +100,7 @@ impl<'info> PumpfunammSellAccounts3<'info> {
             } else {
                 (None, None)
             };
-        let has_pool_v2 = coin_creator_vault_authority.key() != default_coin_creator_vault_authority();
+        let has_pool_v2 = has_pool_v2(accounts, extra_offset, base_mint.key);
         require!(
             accounts.len() >= extra_offset + if has_pool_v2 { 3 } else { 2 },
             ErrorCode::InvalidAccountsLength
@@ -407,7 +411,7 @@ impl<'info> PumpfunammBuyAccounts3<'info> {
             } else {
                 None
             };
-        let has_pool_v2 = coin_creator_vault_authority.key() != default_coin_creator_vault_authority();
+        let has_pool_v2 = has_pool_v2(accounts, extra_offset, base_mint.key);
         require!(
             accounts.len() >= extra_offset + if has_pool_v2 { 3 } else { 2 },
             ErrorCode::InvalidAccountsLength
