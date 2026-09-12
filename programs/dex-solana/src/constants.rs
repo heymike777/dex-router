@@ -160,6 +160,15 @@ pub mod claim_authority {
     declare_id!("CjoV5B96reuCfPh2rRK11G1QptG97jZdyZArTn3EN1Mj");
 }
 
+/// Signer allowed to close an empty router-authority token account created
+/// for an arbitrage hop and receive its rent (`close_arbitrage_intermediate`).
+/// Restricting the closer keeps third parties from sweeping rent the trading
+/// payer funded.
+pub mod close_authority {
+    use anchor_lang::declare_id;
+    declare_id!("8NZMiChYeGFhrZPSrVMacVXkgvMhK5RvAgQLBcZJUSLp");
+}
+
 pub mod compute_budget_program {
     use anchor_lang::declare_id;
     declare_id!("ComputeBudget111111111111111111111111111111");

@@ -53,6 +53,10 @@ pub mod dex_solana {
         instructions::profit_check_handler(ctx)
     }
 
+    pub fn close_arbitrage_intermediate(ctx: Context<CloseArbitrageIntermediate>) -> Result<()> {
+        instructions::close_arbitrage_intermediate_handler(ctx)
+    }
+
     // ******************** Proxy Swap ******************** //
     #[cfg_attr(feature = "log-metrics", dex_macros::log_metrics)]
     pub fn proxy_swap<'a>(

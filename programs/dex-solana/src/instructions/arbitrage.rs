@@ -1,6 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use crate::{error::ErrorCode, wsol_program, Dex, Route, SwapArgs, SwapAccounts, MAX_HOPS};
+use anchor_spl::token_interface::{TokenAccount as InterfaceTokenAccount, TokenInterface};
+use crate::{
+    authority_pda, close_authority, error::ErrorCode, wsol_program, Dex, Route, SwapAccounts,
+    SwapArgs, MAX_HOPS, SA_AUTHORITY_SEED,
+};
 
 pub const ARBITRAGE_OUTPUT_SEED: &[u8] = b"arb_output";
 
@@ -66,6 +70,38 @@ pub fn arbitrage_compact_handler<'a>(
     // Same execution and min-return validation as the legacy ABI. The client's
     // final profit_check still covers network fees, rent, tip and WSOL close.
     crate::instructions::swap_handler(ctx, expanded, 0)
+}
+
+/// Every hop after the first is authorised by the router authority PDA, so an
+/// arbitrage cycle parks its intermediate token in a PDA-owned account whose
+/// rent the payer funds. This closes that account once the cycle emptied it
+/// and refunds the rent to the payer in the same transaction, before
+/// `profit_check`. Only the configured closer may call it; a non-empty
+/// account is kept (the trade then fails in `profit_check`, never here).
+#[derive(Accounts)]
+pub struct CloseArbitrageIntermediate<'info> {
+    #[account(mut, address = close_authority::id() @ ErrorCode::InvalidSigner)]
+    pub payer: Signer<'info>,
+    /// CHECK: router swap authority PDA, the SPL owner of the account
+    #[account(address = authority_pda::id() @ ErrorCode::InvalidAuthorityPda)]
+    pub sa_authority: AccountInfo<'info>,
+    #[account(mut, token::authority = sa_authority, token::token_program = token_program)]
+    pub intermediate: InterfaceAccount<'info, InterfaceTokenAccount>,
+    pub token_program: Interface<'info, TokenInterface>,
+}
+
+pub fn close_arbitrage_intermediate_handler(ctx: Context<CloseArbitrageIntermediate>) -> Result<()> {
+    if ctx.accounts.intermediate.amount != 0 {
+        msg!("ArbitrageClose kept non-empty intermediate {}", ctx.accounts.intermediate.key());
+        return Ok(());
+    }
+    crate::utils::close_token_account(
+        ctx.accounts.intermediate.to_account_info(),
+        ctx.accounts.payer.to_account_info(),
+        ctx.accounts.sa_authority.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        Some(SA_AUTHORITY_SEED),
+    )
 }
 
 #[cfg(test)]
