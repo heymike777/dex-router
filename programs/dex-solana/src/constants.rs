@@ -23,7 +23,7 @@ pub const TRIM_DENOMINATOR_V2: u16 = 1_000;
 pub const PLATFORM_FEE_RATE_LIMIT_V3: u64 = 10_000; // 100%
 pub const PLATFORM_FEE_DENOMINATOR_V3: u64 = 10_000;
 
-pub const MAX_HOPS: usize = 3;
+pub const MAX_HOPS: usize = 4;
 pub const TOTAL_WEIGHT: u8 = 100;
 pub const SA_AUTHORITY_SEED: &[&[&[u8]]] = &[&[SEED_SA, &[BUMP_SA]]];
 pub const TOKEN_ACCOUNT_RENT: u64 = 2039280; // Token account rent (165 bytes)

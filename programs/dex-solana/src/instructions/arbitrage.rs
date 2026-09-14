@@ -124,8 +124,18 @@ mod tests {
         assert_eq!(expanded.routes[0][1].dexes, vec![Dex::MeteoraDlmmSwap2]);
     }
     #[test]
+    fn four_hops_expand_without_changing_amount_or_guard() {
+        let args = CompactArbitrageArgs { amount_in: 1_000, min_return: 1_100,
+            dexes: vec![Dex::MeteoraDlmmSwap2; 4] };
+        assert_eq!(args.try_to_vec().unwrap().len() + 8, 32);
+        let expanded = args.expand().unwrap();
+        assert_eq!(expanded.routes[0].len(), 4);
+        assert_eq!(expanded.amount_in, 1_000);
+        assert_eq!(expanded.min_return, 1_100);
+    }
+    #[test]
     fn rejects_loss_zero_input_and_invalid_hop_counts() {
-        for (input, min, count) in [(0, 0, 2), (100, 99, 2), (100, 100, 0), (100, 100, 1), (100, 100, 4)] {
+        for (input, min, count) in [(0, 0, 2), (100, 99, 2), (100, 100, 0), (100, 100, 1), (100, 100, 5)] {
             assert!(CompactArbitrageArgs { amount_in: input, min_return: min,
                 dexes: vec![Dex::MeteoraDlmmSwap2; count] }.expand().is_err());
         }
