@@ -1,0 +1,28 @@
+{
+  "program": "89P1rihVbww57idhSLHUhxXNkhzYcSghYrbjRoUuivPo",
+  "programdata": "4qDn42Nyprcpeb5XPFRntQPBieZFdL3jEfMzQAFnzKZp",
+  "authority": "mikeSK7hxrzS1U7xyZ5D411AESvhh8zzEdDyhHL2AYg",
+  "deployment_slot": 447050617,
+  "elf_sha256": "a9547680ab32f19cd7e83090ce7b95108ccffff8e0cec4e9e703a7dde232bda2",
+  "elf_bytes": 874912,
+  "programdata_bytes": 877557,
+  "elf_matches": true,
+  "buffer_closed": true,
+  "authority_after_lamports": 7791077784,
+  "authority_delta_lamports": 1030186904,
+  "signature": "gzPaJ2Xqmsh7F4nvL6NLCNaX71Gtd3DEwBkKtgP1BzdKRa2mibwMDgLwZwbMtkMFEGho7JDqhmJt4ME86mBCJqf",
+  "contract_source_commit": "2a6af848f665668ef4636585017793ae54e769b5",
+  "rust_source_commit": "596e3b50e2af21651ed212eeb2050d8fbd255e65",
+  "programdata_before_lamports": 5493529185,
+  "programdata_after_lamports": 4458639800,
+  "released_programdata_rent_lamports": 1034889385,
+  "balance_reconciled_transaction_cost_lamports": 4702481,
+  "server_arb_observe_sha256": "734110ac2f2e38190ed78c367b2808c024af10f533e63c197763a473922b7cbf",
+  "tests": {
+    "contract_unit": 3,
+    "rust_router": 8,
+    "svm_four_hops": true,
+    "svm_guard_rollback": true
+  },
+  "trading_started": false
+}
