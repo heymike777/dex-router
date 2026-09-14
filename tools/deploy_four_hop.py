@@ -66,7 +66,12 @@ elif a.mode == 'deploy':
     assert hashlib.sha256(raw[45:]).hexdigest() == prepared['previous_sha256'], 'program changed since preparation'
     assert balance >= prepared['buffer_rent_lamports']+prepared['extension_rent_lamports']+100_000_000
     if prepared['extension_bytes']:
-        command('extend',['solana','program','extend',PROGRAM,str(prepared['extension_bytes']), '--keypair',a.authority,'--url',url,'--commitment','finalized','--output','json'])
+        extension = max(10_240, prepared['extension_bytes'])
+        required_rent = rpc('getMinimumBalanceForRentExemption',[len(raw)+extension])
+        assert balance >= prepared['buffer_rent_lamports']+max(0, required_rent-data['lamports'])+100_000_000
+        prepared['allocated_extension_bytes'] = extension
+        save('prepared.json', prepared)
+        command('extend',['solana','program','extend',PROGRAM,str(extension), '--keypair',a.authority,'--url',url,'--commitment','finalized','--output','json'])
     command('deploy',['solana','program','deploy',a.artifact,'--program-id',PROGRAM,
         '--upgrade-authority',a.authority,'--keypair',a.authority,'--buffer',str(out/'buffer-keypair.json'),
         '--url',url,'--with-compute-unit-price','50000','--max-sign-attempts','10','--output','json'])
