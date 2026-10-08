@@ -60,3 +60,5 @@ pub mod raydium;
 // pub mod whirlpool;
 // pub mod woofi;
 // pub mod zerofi;
+
+pub mod pump_multi;

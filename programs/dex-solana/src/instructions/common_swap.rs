@@ -139,6 +139,9 @@ pub enum Dex {
     SaberDecimalWrapperWithdraw2,
     PumpfunammBuyV2,
     PumpfunammSellV2,
+    PumpMultiHop2,
+    PumpMultiHop3,
+    PumpMultiHop4,
 }
 
 #[derive(Debug)]
@@ -630,6 +633,12 @@ fn distribute_swap<'a>(
         Dex::RaydiumCpmmSwap => raydium::swap_cpmm,
         Dex::RaydiumClmmSwapV2 => raydium::swap_clmm_v2,
 
+        // Same-direction canonical Pump pool segment, preserving the outer guard.
+        Dex::PumpMultiHop2 | Dex::PumpMultiHop3 | Dex::PumpMultiHop4 => {
+            let length = match dex { Dex::PumpMultiHop2 => 2, Dex::PumpMultiHop3 => 3, _ => 4 };
+            return crate::adapters::pump_multi::trade(remaining_accounts, amount_in, offset,
+                hop_accounts, hop, proxy_from, owner_seeds, payer, length);
+        }
         // Enabled for now: Pumpfun AMM.
         Dex::PumpfunammBuyV2 | Dex::PumpfunammSellV2 => {
             return pumpfunamm_v2::trade(remaining_accounts, amount_in, offset,
