@@ -137,6 +137,8 @@ pub enum Dex {
     MoonitSell2,
     SaberDecimalWrapperDeposit2,
     SaberDecimalWrapperWithdraw2,
+    PumpfunammBuyV2,
+    PumpfunammSellV2,
 }
 
 #[derive(Debug)]
@@ -629,6 +631,11 @@ fn distribute_swap<'a>(
         Dex::RaydiumClmmSwapV2 => raydium::swap_clmm_v2,
 
         // Enabled for now: Pumpfun AMM.
+        Dex::PumpfunammBuyV2 | Dex::PumpfunammSellV2 => {
+            return pumpfunamm_v2::trade(remaining_accounts, amount_in, offset,
+                hop_accounts, hop, proxy_from, owner_seeds, payer,
+                matches!(dex, Dex::PumpfunammBuyV2));
+        }
         Dex::PumpfunammBuy3 => pumpfunamm::buy3,
         Dex::PumpfunammSell3 => {
             return pumpfunamm::sell3(

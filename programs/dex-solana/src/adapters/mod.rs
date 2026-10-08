@@ -35,6 +35,7 @@ pub mod meteora;
 // pub mod phoenix;
 // pub mod pumpfun;
 pub mod pumpfunamm;
+pub mod pumpfunamm_v2;
 // pub mod qualia;
 // pub mod quantum;
 pub mod raydium;
