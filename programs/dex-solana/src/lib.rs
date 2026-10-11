@@ -57,6 +57,18 @@ pub mod dex_solana {
         instructions::close_arbitrage_intermediate_handler(ctx)
     }
 
+    pub fn close_arbitrage_intermediate_v2(
+        ctx: Context<CloseArbitrageIntermediateV2>,
+    ) -> Result<()> {
+        instructions::close_arbitrage_intermediate_v2_handler(ctx)
+    }
+    pub fn prepare_arbitrage_pump_volume(ctx: Context<ArbitragePumpVolume>) -> Result<()> {
+        instructions::prepare_arbitrage_pump_volume_handler(ctx)
+    }
+    pub fn close_arbitrage_pump_volume(ctx: Context<ArbitragePumpVolume>) -> Result<()> {
+        instructions::close_arbitrage_pump_volume_handler(ctx)
+    }
+
     // ******************** Proxy Swap ******************** //
     #[cfg_attr(feature = "log-metrics", dex_macros::log_metrics)]
     pub fn proxy_swap<'a>(
