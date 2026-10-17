@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "contract_source": "5e464eb56f3a5816faca4b7dee0b5e2356985a74",
+  "artifact": "dex_solana.so",
+  "sha256": "560560dac2c36615524dced687f6e5ca2657ac7f9a810ddf6b504b1602b23757",
+  "bytes": 960008,
+  "previously_qualified": true,
+  "new_build_performed": false,
+  "deployment_authority": false,
+  "qualification_doc": "docs/arbitrage-refunds-2026-10-11.md"
+}
