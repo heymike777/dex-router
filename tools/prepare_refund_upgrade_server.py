@@ -81,7 +81,7 @@ def main():
         authority_balance_lamports=plan['authority_balance_lamports'],required_lamports=plan['required_authority_lamports'],
         funding_deficit_lamports=plan['funding_deficit_lamports'],funding_sufficient=plan['funding_sufficient'],
         next_action=plan['next_action'],toolchain_qualified=True,cli_config_parsed=True,artifact_sha256=c.REFUND_SHA,
-        mainnet_sends=0,network_rpc_requests=calls,deployed=False,live_refund_enabled=False,production_changed=False)
+        mainnet_sends=0,network_rpc_requests=calls,deployed=plan['refund_abi_deployed'],live_refund_enabled=False,production_changed=False)
     save('summary.json',summary)
     pins={str(f):sha(f) for f in out.iterdir() if f.is_file()};save('completed-checkpoint.json',pins)
     print(json.dumps(dict(summary=summary,checkpoint_sha256=sha(out/'completed-checkpoint.json'))))
