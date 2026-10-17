@@ -31,6 +31,7 @@ class UpgradeReadinessTests(unittest.TestCase):
             account(check.SYSTEM, balance=1000), account(check.SYSTEM, balance=3000),
         ]}
         self.patches = [patch.object(check, "OLD_SHA", hashlib.sha256(self.old).hexdigest()),
+                        patch.object(check, "OLD_BYTES", len(self.old)),
                         patch.object(check, "REFUND_SHA", hashlib.sha256(self.new).hexdigest())]
         for item in self.patches:
             item.start()
@@ -99,6 +100,21 @@ class UpgradeReadinessTests(unittest.TestCase):
                 (len(self.new), check.REFUND_SHA, 2000, True)]:
             with self.assertRaises(ValueError):
                 check.assess_identity(self.snapshot, size, digest, rent, 500, reserve)
+
+    def test_extended_original_zero_tail_is_known_original_not_refund(self):
+        self.snapshot['value'][1] = account(check.LOADER, self.header+self.old+bytes(128), 500)
+        result = self.assess()
+        self.assertFalse(result['refund_abi_deployed'])
+        self.assertTrue(result['original_elf_with_zero_padding'])
+        self.assertEqual(result['deployed_code_sha256'], check.OLD_SHA)
+        self.assertEqual(result['extension_bytes'], 0)
+        self.assertEqual(result['temporary_required_lamports'], 2100)
+
+    def test_extended_original_nonzero_tail_and_changed_prefix_refuse(self):
+        for image in [self.old+bytes(127)+b'\1', b'X'+self.old[1:]+bytes(128)]:
+            self.snapshot['value'][1] = account(check.LOADER,self.header+image,500)
+            with self.assertRaisesRegex(ValueError, 'unrecognized deployed ELF'):
+                self.assess()
 
 
 if __name__ == "__main__":
