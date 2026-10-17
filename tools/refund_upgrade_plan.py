@@ -63,7 +63,7 @@ def commands(cli, config, artifact, buffer_keypair, authority_keypair, extension
     common=[str(cli),'--config',str(config),'--commitment','finalized','--output','json']
     write=common+['program','write-buffer',str(artifact),'--buffer',str(buffer_keypair),
         '--buffer-authority',str(authority_keypair),'--fee-payer',str(authority_keypair),
-        '--use-rpc','--with-compute-unit-price','50000','--max-sign-attempts','3']
+        '--max-len',str(c.REFUND_BYTES),'--use-rpc','--with-compute-unit-price','50000','--max-sign-attempts','3']
     extend=[common+['program','extend',c.PROGRAM,str(n)] for n in extension_chunks]
     # Buffer is already uploaded and its bytes verified. No random buffer or
     # implicit extension, no feature/preflight bypass, no authority finalization.

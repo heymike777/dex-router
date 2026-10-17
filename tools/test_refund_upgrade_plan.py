@@ -80,6 +80,8 @@ class Controls(unittest.TestCase):
             self.assertIn('/private/buffer',cmd);self.assertNotIn('--skip-preflight',cmd);self.assertNotIn('--skip-feature-verify',cmd)
             self.assertNotIn('--final',cmd);self.assertNotIn('--url',cmd);self.assertNotIn('--buffers',cmd)
         self.assertIn('--no-auto-extend',commands['deploy_verified_buffer'])
+        write=commands['write_buffer']
+        self.assertEqual(write[write.index('--max-len')+1],str(c.REFUND_BYTES))
         self.assertNotIn('/elf',commands['deploy_verified_buffer'])
         self.assertEqual(len(commands['extend_one_at_a_time']),2)
 
