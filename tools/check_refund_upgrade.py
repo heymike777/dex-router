@@ -20,6 +20,7 @@ SYSTEM = "11111111111111111111111111111111"
 GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
 OLD_SHA = "3eeb2d67fe1bea200e616cbf7056fad5b5150b7c838ec094337aab07ef91e762"
 REFUND_SHA = "560560dac2c36615524dced687f6e5ca2657ac7f9a810ddf6b504b1602b23757"
+REFUND_BYTES = 960008
 ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
@@ -47,6 +48,15 @@ def data(account):
 def assess(snapshot, elf, buffer_rent, target_program_rent, reserve):
     """Validate one finalized snapshot and compute temporary capital, not profit."""
     require(hashlib.sha256(elf).hexdigest() == REFUND_SHA, "unqualified refund ELF")
+    return assess_identity(snapshot, len(elf), REFUND_SHA, buffer_rent, target_program_rent, reserve)
+
+
+def assess_identity(snapshot, target_bytes, target_sha, buffer_rent, target_program_rent, reserve):
+    """Funding/image identity only; does not attest a local build or signing key."""
+    require(type(target_bytes) is int and target_bytes > 0, "invalid target size")
+    require(target_sha == REFUND_SHA, "unqualified target digest")
+    for value in (buffer_rent, target_program_rent, reserve):
+        require(type(value) is int and 0 <= value < 2**64, "invalid funding amount")
     program, programdata, authority, trader = snapshot["value"]
     require(program["owner"] == programdata["owner"] == LOADER, "wrong loader")
     require(program["executable"] and not programdata["executable"], "wrong executable flags")
@@ -59,9 +69,11 @@ def assess(snapshot, elf, buffer_rent, target_program_rent, reserve):
         require(account is not None and account["owner"] == SYSTEM and not account["executable"] and data(account) == b"", "wallet account role changed")
     image = raw[45:]
     old_sha = hashlib.sha256(image).hexdigest()
-    deployed = image[:len(elf)] == elf and not any(image[len(elf):])
+    deployed = (len(image) >= target_bytes and
+                hashlib.sha256(image[:target_bytes]).hexdigest() == target_sha and
+                not any(image[target_bytes:]))
     require(deployed or old_sha == OLD_SHA, "unrecognized deployed ELF; review before upgrade")
-    extension = max(0, len(elf) - len(image))
+    extension = max(0, target_bytes - len(image))
     extension_rent = max(0, target_program_rent - programdata["lamports"]) if extension else 0
     temporary = 0 if deployed else buffer_rent + extension_rent + reserve
     deficit = max(0, temporary - authority["lamports"])
@@ -72,7 +84,7 @@ def assess(snapshot, elf, buffer_rent, target_program_rent, reserve):
         "upgrade_authority": AUTHORITY, "trading_payer": TRADER,
         "deployment_slot": int.from_bytes(raw[4:12], "little"),
         "deployed_elf_sha256": old_sha, "deployed_capacity_bytes": len(image),
-        "refund_elf_sha256": REFUND_SHA, "refund_elf_bytes": len(elf),
+        "refund_elf_sha256": target_sha, "refund_elf_bytes": target_bytes,
         "refund_abi_deployed": deployed, "extension_bytes": extension,
         "buffer_rent_lamports": buffer_rent,
         "extension_rent_lamports": extension_rent,

@@ -88,6 +88,18 @@ class UpgradeReadinessTests(unittest.TestCase):
         self.assertEqual(result["extension_rent_lamports"], 0)
         self.assertEqual(result["temporary_required_lamports"], 2100)
 
+    def test_identity_only_matches_artifact_assessment(self):
+        self.assertEqual(self.assess(), check.assess_identity(
+            self.snapshot, len(self.new), check.REFUND_SHA, 2000, 500, 100))
+
+    def test_invalid_amounts_and_target_refuse(self):
+        for size, digest, rent, reserve in [(0, check.REFUND_SHA, 2000, 100),
+                (True, check.REFUND_SHA, 2000, 100), (len(self.new), '0'*64, 2000, 100),
+                (len(self.new), check.REFUND_SHA, -1, 100),
+                (len(self.new), check.REFUND_SHA, 2000, True)]:
+            with self.assertRaises(ValueError):
+                check.assess_identity(self.snapshot, size, digest, rent, 500, reserve)
+
 
 if __name__ == "__main__":
     unittest.main()
