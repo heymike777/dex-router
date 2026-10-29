@@ -1,3 +1,42 @@
+# 2026-10-29 — Cleanup contract DEPLOYED and finalized; upgrade grant fulfilled; trading OFF
+
+Program89P1rihVbww57idhSLHUhxXNkhzYcSghYrbjRoUuivPo upgraded at slot462899354.
+Signature67RvkR8beQAYUVXTqLeB1My55seCg2XoL5ERdUhXamXoZLo1T9E3n82y4EoKPNS14jsCSsBaW9xrg7Tdy1toyRAR.
+ELF960008bytes SHA85d841610a5835232c7af836425656543c2ed40bee7a30cad57326f964c08c6b
+(sourceea8fec57195cc50d5aebb7ee1c929e612f39f9f5) matches the EXACT on-chain prefix.
+Capacity961384bytes includes1376STRICTZEROtail; allocated payloadSHA
+34f993f8ff75c81d04d57d821b8f5ef0d944171584ea88c9264d857139085cd7.
+Do NOT confuse code prefix85...with full ProgramData payload34f993...in runtime generation pins.
+AuthoritymikeSK7hxrzS1U7xyZ5D411AESvhh8zzEdDyhHL2AYg unchanged/upgradeable.
+Samebuffer3xx...CLOSED,4877719480lamports returned; no new buffer identity.
+Actual TOTALnetworkfees5045000<=10000000cap, retained extensionrent312115200.
+Deployer4914919868lamports AFTERupgrade; trader7777555untouched. Human intends to return
+SOLto trader themselves. No transfer by agent, no arbitrage sends, no live enrollment.
+TemporaryserverauthoritykeyREMOVED; local original and historicalbufferkey retained privately.
+
+Read baseline/current-trader-cleanup-deployment-2026-10-29.json and contract
+ docs/deployments/2026-10-29-current-trader-cleanup.{json,html}. Private immutable ledger:
+/home/arb/validation/current-trader-cleanup-deploy-20261029-a (old-router backup retained).
+Initialwrite expired partly:950writes+initial fee4760000, SAMEbuffer resumed only after
+finalizedexpiry reconciliation;50writes250000more. Five10240extensions passed;8864final
+step failed preflight/-32002/invalidargument withoutfee. Mainnet minimum is10240; pure
+planner updated through GitHub04bbe84c8001100686c0588876a676224d471a7e,29testsPASS Mac/Linux.
+Sixth10240step passed. Roundedextra1376bytes add6990080retainedrent, within funded capital.
+No fee ledger reset, no bypass of preflight/feature checks, no authority transfer/freeze.
+Nested pure-plan mainnet_sends:0 is NOT an execution counter; actual loader sends occurred.
+Public deployment receipt explicitly distinguishes loader transactions from arbitrage sends0.
+
+The prior upgrade-only grant is now FULFILLED; do not redeploy/reprovision signer or wait
+for old funding question. Both profit guards preserved; DO NOT start trading from this
+upgrade grant. Keep Original compute policy; empirical router/CU profiles pinned to old
+3eeb...or candidate85...are NOT automatically qualified for allocatedpayload34f993....
+After trader funding, next evidence step is fresh unsigned LaserStream shadow recognizing
+new deployed code; no on-chain arbitrage profitability claim. Installed app bins/runtime
+were not changed by the loader upgrade. Older pending-funding/NOTDEPLOYED notes below
+are historical and superseded by this section.
+
+---
+
 # Current-trader cleanup: fresh PumpSwap/DLMM proof and conditional upgrade grant
 
 Candidate source ea8fec57195cc50d5aebb7ee1c929e612f39f9f5 remains unchanged.
