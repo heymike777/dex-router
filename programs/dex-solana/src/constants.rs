@@ -163,10 +163,11 @@ pub mod claim_authority {
 /// Signer allowed to close an empty router-authority token account created
 /// for an arbitrage hop and receive its rent (`close_arbitrage_intermediate`).
 /// Restricting the closer keeps third parties from sweeping rent the trading
-/// payer funded.
+/// payer funded. This is the current trader, separate from claim/upgrade authority;
+/// the retired 8NZMi... trading key must not retain cleanup privileges.
 pub mod close_authority {
     use anchor_lang::declare_id;
-    declare_id!("8NZMiChYeGFhrZPSrVMacVXkgvMhK5RvAgQLBcZJUSLp");
+    declare_id!("MikekzKTjw4ny4pMi6QTpF41DHHHAhNei3YNxPWi9mt");
 }
 
 pub mod compute_budget_program {
