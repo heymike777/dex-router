@@ -12,6 +12,19 @@ TARGET_BYTES = 960008
 OLD_SHA = '3eeb2d67fe1bea200e616cbf7056fad5b5150b7c838ec094337aab07ef91e762'
 OLD_BYTES = 899944
 FEE_CAP = 10_000_000
+MIN_EXTEND_BYTES = 10240
+
+
+def maximum_capacity():
+    """Smallest minimum-step allocation from the pinned original allocation."""
+    return OLD_BYTES + ((TARGET_BYTES - OLD_BYTES + MIN_EXTEND_BYTES - 1) // MIN_EXTEND_BYTES) * MIN_EXTEND_BYTES
+
+
+def extension_chunks(current):
+    require(type(current) is int and OLD_BYTES <= current <= maximum_capacity(), 'unknown allocation')
+    chunks = [MIN_EXTEND_BYTES] * ((max(0, TARGET_BYTES - current) + MIN_EXTEND_BYTES - 1) // MIN_EXTEND_BYTES)
+    require(current + sum(chunks) <= maximum_capacity(), 'rounded allocation exceeds reviewed bound')
+    return chunks
 
 
 def require(ok, message):
@@ -33,9 +46,10 @@ def plan(snapshot, elf, buffer, buffer_rent, target_rent, fee_spent=0):
     for wallet in [authority, trader]:
         require(wallet is not None and wallet['owner'] == layout.SYSTEM and not wallet['executable'] and layout.data(wallet) == b'', 'wallet role')
     image = data[45:]
-    deployed = image == elf
+    deployed = (TARGET_BYTES <= len(image) <= maximum_capacity()
+                and image[:TARGET_BYTES] == elf and not any(image[TARGET_BYTES:]))
     require(deployed or fee_spent < FEE_CAP, 'fee budget exhausted before completion')
-    old = (OLD_BYTES <= len(image) <= TARGET_BYTES and hashlib.sha256(image[:OLD_BYTES]).hexdigest() == OLD_SHA and not any(image[OLD_BYTES:]))
+    old = (OLD_BYTES <= len(image) <= maximum_capacity() and hashlib.sha256(image[:OLD_BYTES]).hexdigest() == OLD_SHA and not any(image[OLD_BYTES:]))
     require(deployed or old, 'unknown code or nonzero extension tail')
     state, complete, locked = 'absent', False, 0
     if buffer is not None:
@@ -47,9 +61,8 @@ def plan(snapshot, elf, buffer, buffer_rent, target_rent, fee_spent=0):
         require(buffer['lamports'] >= buffer_rent, 'buffer below rent')
         complete = raw[37:] == elf
         state, locked = ('complete' if complete else 'partial'), buffer['lamports']
-    extra = max(0, len(elf) - len(image))
-    chunks = [10240] * (extra // 10240) + ([extra % 10240] if extra % 10240 else [])
-    retained = max(0, target_rent - pd['lamports']) if extra else 0
+    chunks = extension_chunks(len(image))
+    retained = max(0, target_rent - pd['lamports']) if chunks else 0
     remaining = FEE_CAP - fee_spent
     required = 0 if deployed else (buffer_rent if buffer is None else 0) + retained + remaining
     deficit = max(0, required - authority['lamports'])
@@ -59,6 +72,8 @@ def plan(snapshot, elf, buffer, buffer_rent, target_rent, fee_spent=0):
     return dict(schema_version=1, read_only=True, target_sha256=TARGET_SHA, target_bytes=TARGET_BYTES,
                 buffer_identity=BUFFER, buffer_state=state, buffer_locked_lamports=locked,
                 deployed=deployed, allocation_bytes=len(image), extension_chunks=chunks,
+                target_allocation_bytes=len(image) + sum(chunks),
+                target_zero_padding_bytes=max(0, len(image) + sum(chunks) - TARGET_BYTES),
                 extension_rent_lamports=retained, temporary_buffer_rent_lamports=buffer_rent,
                 fee_cap_lamports=FEE_CAP, fee_spent_lamports=fee_spent, fee_remaining_lamports=remaining,
                 required_authority_lamports=required, authority_balance_lamports=authority['lamports'],
@@ -66,7 +81,8 @@ def plan(snapshot, elf, buffer, buffer_rent, target_rent, fee_spent=0):
 
 
 def commands(cli, config, artifact, buffer_keypair, authority_keypair, chunks):
-    require(all(type(n) is int and 0 < n <= 10240 for n in chunks) and sum(chunks) <= TARGET_BYTES - OLD_BYTES, 'extension bound')
+    require(all(type(n) is int and n == MIN_EXTEND_BYTES for n in chunks)
+            and sum(chunks) <= maximum_capacity() - OLD_BYTES, 'extension bound')
     # Force QUIC implementation, where --use-rpc is honored; no TPU is created.
     common = [str(cli), '--config', str(config), '--keypair', str(authority_keypair),
               '--commitment', 'finalized', '--output', 'json', '--use-quic']

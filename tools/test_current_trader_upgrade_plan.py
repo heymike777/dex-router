@@ -79,7 +79,7 @@ class CurrentPlan(unittest.TestCase):
             with self.assertRaises(ValueError): self.plan(fee_spent=fee)
 
     def test_command_shape_preserves_authority_bounded_fees_and_preflight(self):
-        r = p.commands('/cli', '/private-config', '/current-elf', '/existing-buffer', '/authority', [1, 2])
+        r = p.commands('/cli', '/private-config', '/current-elf', '/existing-buffer', '/authority', [10240, 10240])
         for command in [r['write_buffer'], r['deploy_verified_buffer']]:
             self.assertEqual(command[command.index('--with-compute-unit-price')+1], '0')
             self.assertEqual(command[command.index('--max-sign-attempts')+1], '1')
@@ -88,6 +88,28 @@ class CurrentPlan(unittest.TestCase):
         self.assertIn('--no-auto-extend', r['deploy_verified_buffer'])
         self.assertEqual(r['extend_one_at_a_time'][0][r['extend_one_at_a_time'][0].index('--keypair')+1], '/authority')
         self.assertNotIn('--final', r['deploy_verified_buffer'])
+
+    def test_last_shortfall_rounds_up_to_mainnet_minimum_without_changing_elf(self):
+        with patch.object(p,'OLD_BYTES',899944),patch.object(p,'TARGET_BYTES',960008):
+            self.assertEqual(p.maximum_capacity(),961384)
+            self.assertEqual(p.extension_chunks(899944),[10240]*6)
+            self.assertEqual(p.extension_chunks(951144),[10240])
+            self.assertEqual(p.extension_chunks(960008),[])
+            self.assertEqual(p.extension_chunks(961384),[])
+            with self.assertRaises(ValueError):p.extension_chunks(961385)
+        for chunks in [[8864],[0],[True],[10240]*7]:
+            with self.assertRaises(ValueError):p.commands('/cli','/config','/elf','/buffer','/authority',chunks)
+
+    def test_exact_candidate_with_only_bounded_zero_padding_is_verified_not_redeployed(self):
+        capacity=p.maximum_capacity()
+        self.snapshot['value'][1]=account(p.layout.LOADER,self.header+self.new+bytes(capacity-len(self.new)),150)
+        result=self.plan()
+        self.assertEqual(result['next_action'],'verified_complete')
+        self.assertEqual(result['allocation_bytes'],capacity)
+        self.assertEqual(result['target_zero_padding_bytes'],capacity-len(self.new))
+        for image in [self.new+bytes(capacity-len(self.new)-1)+b'\1',self.new+bytes(capacity-len(self.new)+1)]:
+            self.snapshot['value'][1]=account(p.layout.LOADER,self.header+image,150)
+            with self.assertRaises(ValueError):self.plan()
 
 
 if __name__ == '__main__': unittest.main()

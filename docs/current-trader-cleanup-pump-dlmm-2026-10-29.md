@@ -63,3 +63,24 @@ identity/rent/fee/signer/buffer checks remain required after funding. Generic
 continuation must not start trading. Existing empirical CU profiles remain pinned
 to the older router; keep Original CU policy until a separate candidate matrix
 qualifies any cuts. Seven-DEX full-mode coverage/live profit remains unproven.
+
+## Execution-time mainnet minimum extension step
+
+After funding, the original buffer identity was reused and its exact target ELF
+was fully verified. Five10240-byte extensions finalized. The old final8864-byte
+step was rejected by RPC preflight with `ExtendProgram requires a minimum of
+10240 additional bytes`; no on-chain fee/allocation change for that rejected step.
+The pure planner now rounds every required extension to10240bytes. From the
+pinned original899944-byte allocation, the maximum reviewed capacity is961384:
+960008unchanged ELF bytes plus1376strictly ZERO bytes. Both an unknown/nonzero
+tail and an allocation beyond this bound refuse. A candidate with only the
+bounded zero tail is verified as complete, never redeployed. Commands still use
+one signing pass/zero priority fee/RPC writes/no-auto-extend/no-final.
+
+The extra1376bytes retain6990080lamports more ProgramData rent than the old plan.
+Total retained extension rent is312115200lamports; actual temporary buffer rent
+is4877719480lamports (CLI reserves the ProgramData-sized rent). The funded account
+covers this within the original5.2SOLtop-up; network-fee cap remains10000000.
+ELF target85.../sourceea8...and both profit guards are unchanged. Local pure
+readiness/planning tests29PASS; execution must reconcile the rejected preflight
+and continue the SAMEbuffer/fee ledger, never restart funding or overwrite evidence.
