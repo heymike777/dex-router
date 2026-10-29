@@ -1,3 +1,30 @@
+# Follow-up: mixed guarded production V1 and current deployment review
+
+The sourceea8fec5 candidate now also passes full historical DLMM → CLMM → CLMM
+production-wire/native-V1 parity with both guards:1641bytes,252687CU,34calls of34,
+all three outputs exact, payernet1610035excluding hypothetical separate setup.
+Both stronger-guard controls, CU exhaustion and retired-closer control roll back.
+Six older DLMM cases retain EXACT V1wire and all five native mode reports.
+See sibling rust-bot/docs/guarded-mixed-route-2026-10-29.md and public baselines.
+
+Fresh finalized review confirms CURRENT on-chain allocation899944ELFbytes while
+candidate960008requires60064extension. Temporary buffer4877678840lamports;
+additional retained ProgramData rent305125120; PROPOSEDnetworkfeecap10000000.
+Peak5192803960, authoritybalance2080068, deficit5190723892:5.2SOLtop-up to
+mikeSK7hxrzS1U7xyZ5D411AESvhh8zzEdDyhHL2AYg covers this snapshot. Buffer rent is
+recoverable only after successful upgrade; extension rent remains in ProgramData.
+The fee cap is a proposal, not an observed fee or user authorization. Source diff
+only changes cleanup authority relative to its reviewed local parent; bytewise
+build equivalence to the smaller deployed ELF is NOT claimed.
+
+No upgrade or funding performed. Existing unfunded buffer identity preserved;
+server signer placeholder absent, documented local key exists/private but was
+NOT read. Use the new exact artifact/review, NEVER old October17 target/commands.
+USDC ATA was separately authorized and finalized; it is not upgrade/trading
+consent. Both bot profit guards unchanged; trading remains disabled.
+
+---
+
 # Current trader cleanup authority — 29 October 2026
 
 Full native V1 replay of six saved DLMM/DLMM observations reaches both swaps
