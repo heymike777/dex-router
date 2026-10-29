@@ -79,7 +79,7 @@ class CurrentPlan(unittest.TestCase):
             with self.assertRaises(ValueError): self.plan(fee_spent=fee)
 
     def test_command_shape_preserves_authority_bounded_fees_and_preflight(self):
-        r = p.commands('/cli', '/private-config', '/current-elf', '/existing-buffer', '/authority', [10240, 10240])
+        r = p.commands('/cli', '/private-config', '/current-elf', '/existing-buffer', '/authority', [10240])
         for command in [r['write_buffer'], r['deploy_verified_buffer']]:
             self.assertEqual(command[command.index('--with-compute-unit-price')+1], '0')
             self.assertEqual(command[command.index('--max-sign-attempts')+1], '1')
